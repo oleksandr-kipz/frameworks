@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
+use App\Models\Product;
 use Exception;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -10,33 +12,14 @@ use function response;
 class ProductController extends Controller
 {
 
-    public const PRODUCTS = [
-        [
-            'id'          => '4263ed5c-8d78-4b65-99d3-059321ca5629',
-            'name'        => 'product1',
-            'description' => 'description1',
-            'price'       => '100'
-        ],
-        [
-            'id'          => '9897dc23-e6e6-47f5-bc20-daa776256ece',
-            'name'        => 'product2',
-            'description' => 'description2',
-            'price'       => '200'
-        ],
-        [
-            'id'          => '3992b376-1867-4076-94e6-cd7612bb690a',
-            'name'        => 'product3',
-            'description' => 'description3',
-            'price'       => '300'
-        ]
-    ];
-
     /**
      * @return mixed
      */
     public function getProducts(): mixed
     {
-        return response()->json(self::PRODUCTS, Response::HTTP_OK);
+        $products = Product::all();
+
+        return response()->json($products, Response::HTTP_OK);
     }
 
     /**
@@ -45,7 +28,7 @@ class ProductController extends Controller
      */
     public function getProductItem(string $id): mixed
     {
-        $product = $this->getProductItemById(self::PRODUCTS, $id);
+        $product = Product::find($id);
 
         if (!$product) {
             return response()->json(['data' => ['error' => 'Not found product by id ' . $id]], Response::HTTP_NOT_FOUND);
@@ -63,19 +46,20 @@ class ProductController extends Controller
     {
         $requestData = json_decode($request->getContent(), true);
 
-        $productId = random_int(1, 100);
+        $category = Category::find($requestData['category']);
 
-        $newProductData = [
-            'id'          => $productId,
+        if (!$category) {
+            return response()->json(['data' => ['error' => 'Not found category by id ' . $requestData['category']]], Response::HTTP_NOT_FOUND);
+        }
+
+        $product = $category->products()->create([
             'name'        => $requestData['name'],
-            'description' => $requestData['description'],
-            'price'       => $requestData['price']
-        ];
-
-        // TODO insert to db
+            'price'       => $requestData['price'],
+            'description' => $requestData['description']
+        ]);
 
         return response()->json([
-            'data' => $newProductData
+            'data' => $product
         ], Response::HTTP_CREATED);
     }
 
@@ -85,33 +69,39 @@ class ProductController extends Controller
      */
     public function deleteProduct(string $id): mixed
     {
-        $product = $this->getProductItemById(self::PRODUCTS, $id);
+        $product = Product::find($id);
 
         if (!$product) {
             return response()->json(['data' => ['error' => 'Not found product by id ' . $id]], Response::HTTP_NOT_FOUND);
         }
 
-        // TODO remove from db
+        $product->delete();
 
         return response()->json([], Response::HTTP_NO_CONTENT);
     }
 
     /**
-     * @param array $products
      * @param string $id
-     * @return array|null
+     * @param Request $request
+     * @return mixed
      */
-    public function getProductItemById(array $products, string $id): ?array
+    public function updateProduct(string $id, Request $request): mixed
     {
-        foreach ($products as $product) {
-            if ($product['id'] != $id) {
-                continue;
-            }
+        $product = Product::find($id);
 
-            return $product;
+        if (!$product) {
+            return response()->json(['data' => ['error' => 'Not found product by id ' . $id]], Response::HTTP_NOT_FOUND);
         }
 
-        return null;
+        $requestData = json_decode($request->getContent(), true);
+
+        $product->update([
+            'price' => $requestData['price']
+        ]);
+
+        return response()->json([
+            'data' => $product
+        ], Response::HTTP_CREATED);
     }
 
 }

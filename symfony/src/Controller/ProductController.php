@@ -2,6 +2,9 @@
 
 namespace App\Controller;
 
+use App\Entity\Category;
+use App\Entity\Product;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,26 +15,10 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ProductController extends AbstractController
 {
 
-    public const PRODUCTS = [
-        [
-            'id'          => '4263ed5c-8d78-4b65-99d3-059321ca5629',
-            'name'        => 'product1',
-            'description' => 'description1',
-            'price'       => '100'
-        ],
-        [
-            'id'          => '9897dc23-e6e6-47f5-bc20-daa776256ece',
-            'name'        => 'product2',
-            'description' => 'description2',
-            'price'       => '200'
-        ],
-        [
-            'id'          => '3992b376-1867-4076-94e6-cd7612bb690a',
-            'name'        => 'product3',
-            'description' => 'description3',
-            'price'       => '300'
-        ]
-    ];
+    /**
+     * @param EntityManagerInterface $entityManager
+     */
+    public function __construct(private readonly EntityManagerInterface $entityManager) {}
 
     /**
      * @return JsonResponse
@@ -39,7 +26,10 @@ final class ProductController extends AbstractController
     #[Route('/products', name: 'get_products', methods: [Request::METHOD_GET])]
     public function getProducts(): JsonResponse
     {
-        return new JsonResponse(['data' => self::PRODUCTS], Response::HTTP_OK);
+        /** @var Product $product */
+        $products = $this->entityManager->getRepository(Product::class)->findAll();
+
+        return new JsonResponse(['data' => $products], Response::HTTP_OK);
     }
 
     /**
@@ -49,7 +39,8 @@ final class ProductController extends AbstractController
     #[Route('/products/{id}', name: 'get_product_item', methods: [Request::METHOD_GET])]
     public function getProductItem(string $id): JsonResponse
     {
-        $product = $this->getProductItemById(self::PRODUCTS, $id);
+        /** @var Product $product */
+        $product = $this->entityManager->getRepository(Product::class)->find($id);
 
         if (!$product) {
             return new JsonResponse(['data' => ['error' => 'Not found product by id ' . $id]], Response::HTTP_NOT_FOUND);
@@ -63,26 +54,33 @@ final class ProductController extends AbstractController
     {
         $requestData = json_decode($request->getContent(), true);
 
-        $productId = random_int(1, 100);
+        /** @var Category $category */
+        $category = $this->entityManager->getRepository(Category::class)->find($requestData['category']);
 
-        $newProductData = [
-            'id'          => $productId,
-            'name'        => $requestData['name'],
-            'description' => $requestData['description'],
-            'price'       => $requestData['price']
-        ];
+        if (!$category) {
+            return new JsonResponse(['data' => ['error' => 'Not found category by id ' . $requestData['category']]], Response::HTTP_NOT_FOUND);
+        }
 
-        // TODO insert to db
+        $product = new Product();
+
+        $product->setName($requestData['name'])
+            ->setDescription($requestData['description'])
+            ->setPrice($requestData['price'])
+            ->setCategory($category);
+
+        $this->entityManager->persist($product);
+        $this->entityManager->flush();
 
         return new JsonResponse([
-            'data' => $newProductData
+            'data' => $product
         ], Response::HTTP_CREATED);
     }
 
     #[Route('/products/{id}', name: 'patch_products', methods: [Request::METHOD_PATCH])]
     public function updateProduct(string $id, Request $request): JsonResponse
     {
-        $product = $this->getProductItemById(self::PRODUCTS, $id);
+        /** @var Product $product */
+        $product = $this->entityManager->getRepository(Product::class)->find($id);
 
         if (!$product) {
             return new JsonResponse(['data' => ['error' => 'Not found product by id ' . $id]], Response::HTTP_NOT_FOUND);
@@ -90,11 +88,9 @@ final class ProductController extends AbstractController
 
         $requestData = json_decode($request->getContent(), true);
 
-        $product['name'] = $requestData['name'];
-        $product['description'] = $requestData['description'];
-        $product['price'] = $requestData['price'];
+        $product->setPrice($requestData['price']);
 
-        // TODO insert to db
+        $this->entityManager->flush();
 
         return new JsonResponse([
             'data' => $product
@@ -104,33 +100,17 @@ final class ProductController extends AbstractController
     #[Route('/products/{id}', name: 'delete_products', methods: [Request::METHOD_DELETE])]
     public function deleteProduct(string $id): JsonResponse
     {
-        $product = $this->getProductItemById(self::PRODUCTS, $id);
+        /** @var Product $product */
+        $product = $this->entityManager->getRepository(Product::class)->find($id);
 
         if (!$product) {
             return new JsonResponse(['data' => ['error' => 'Not found product by id ' . $id]], Response::HTTP_NOT_FOUND);
         }
 
-        // TODO remove from db
+        $this->entityManager->remove($product);
+        $this->entityManager->flush();
 
         return new JsonResponse([], Response::HTTP_NO_CONTENT);
-    }
-
-    /**
-     * @param array $products
-     * @param string $id
-     * @return array|null
-     */
-    public function getProductItemById(array $products, string $id): ?array
-    {
-        foreach ($products as $product) {
-            if ($product['id'] != $id) {
-                continue;
-            }
-
-            return $product;
-        }
-
-        return null;
     }
 
 }
