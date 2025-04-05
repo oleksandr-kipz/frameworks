@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Repository\ProductRepository;
 use Exception;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,12 +13,35 @@ use function response;
 class ProductController extends Controller
 {
 
+    public const ITEMS_PER_PAGE = 2;
+
     /**
+     * @var ProductRepository
+     */
+    private ProductRepository $productRepository;
+
+    /**
+     * @param ProductRepository $productRepository
+     */
+    public function __construct(ProductRepository $productRepository)
+    {
+        $this->productRepository = $productRepository;
+    }
+
+    /**
+     * @param Request $request
      * @return mixed
      */
-    public function getProducts(): mixed
+    public function getProducts(Request $request): mixed
     {
-        $products = Product::all();
+        $queryParams = $request->all();
+
+        $itemsPerPage = $queryParams['itemsPerPage'] ?? self::ITEMS_PER_PAGE;
+
+        unset($queryParams['page']);
+        unset($queryParams['itemsPerPage']);
+
+        $products = $this->productRepository->getProducts($queryParams, $itemsPerPage ?? self::ITEMS_PER_PAGE);
 
         return response()->json($products, Response::HTTP_OK);
     }

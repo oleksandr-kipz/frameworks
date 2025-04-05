@@ -7,10 +7,13 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use JetBrains\PhpStorm\ArrayShape;
 use JsonSerializable;
+use TimestampableTrait;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 class Product implements JsonSerializable
 {
+
+    use TimestampableTrait;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -128,6 +131,7 @@ class Product implements JsonSerializable
             'name'        => $this->getName(),
             'description' => $this->getDescription(),
             'price'       => $this->getPrice(),
+            'category'   => $this->getCategory()
         ];
     }
 }

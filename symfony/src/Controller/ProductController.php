@@ -15,19 +15,30 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ProductController extends AbstractController
 {
 
+    public const ITEMS_PER_PAGE = 2;
+
     /**
      * @param EntityManagerInterface $entityManager
      */
     public function __construct(private readonly EntityManagerInterface $entityManager) {}
 
     /**
+     * @param Request $request
      * @return JsonResponse
      */
     #[Route('/products', name: 'get_products', methods: [Request::METHOD_GET])]
-    public function getProducts(): JsonResponse
+    public function getProducts(Request $request): JsonResponse
     {
+        $queryParams = $request->query->all();
+
+        $page = $queryParams['page'] ?? 1;
+        $itemsPerPage = $queryParams['itemsPerPage'] ?? self::ITEMS_PER_PAGE;
+
+        unset($queryParams['page']);
+        unset($queryParams['itemsPerPage']);
+
         /** @var Product $product */
-        $products = $this->entityManager->getRepository(Product::class)->findAll();
+        $products = $this->entityManager->getRepository(Product::class)->getProducts($queryParams, $page, $itemsPerPage);
 
         return new JsonResponse(['data' => $products], Response::HTTP_OK);
     }
