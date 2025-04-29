@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/v1')]
 final class ProductController extends AbstractController
@@ -27,8 +28,11 @@ final class ProductController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/products', name: 'get_products', methods: [Request::METHOD_GET])]
+    #[IsGranted("ROLE_ADMIN")]
     public function getProducts(Request $request): JsonResponse
     {
+        $this->getUser();
+
         $queryParams = $request->query->all();
 
         $page = $queryParams['page'] ?? 1;
